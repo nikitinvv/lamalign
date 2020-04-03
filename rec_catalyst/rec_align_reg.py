@@ -49,10 +49,10 @@ def flowplot(u, psi, flow, binning):
 
     plt.subplot(3, 4, 12)
     plt.imshow(u[:, :, n//2].real, cmap='gray')
-    if not os.path.exists('/data/staff/tomograms/viknik/lamino//flow/'+str(binning)+'_'+str(ntheta)+'/'):
-        os.makedirs('/data/staff/tomograms/viknik/lamino//flow/' +
+    if not os.path.exists('/local/data/viktor/lamino//flow/'+str(binning)+'_'+str(ntheta)+'/'):
+        os.makedirs('/local/data/viktor//lamino//flow/' +
                     str(binning)+'_'+str(ntheta)+'/')
-    plt.savefig('/data/staff/tomograms/viknik/lamino//flow/' +
+    plt.savefig('/local/data/viktor/lamino//flow/' +
                 str(binning)+'_'+str(ntheta)+'/flow'+str(k))
     plt.close()
 
@@ -74,9 +74,9 @@ if __name__ == "__main__":
 
     # read data and angles
     data = dxchange.read_tiff(
-        '/data/staff/tomograms/viknik/lamino/lamni-data-sorted-prealigned-cropped.tif').astype('complex64')[:, 8:-8, 8:-8]
+        '/local/data/viktor/lamino/lamni-data-sorted-prealigned-cropped.tif').astype('complex64')
     theta = np.load(
-        '/data/staff/tomograms/viknik/lamino/angles.npy').astype('float32')/180*np.pi
+        '/local/data/viktor/lamino/angles.npy').astype('float32')/180*np.pi
     #ids_bad = np.array([29,44,56,102,152])    
     phi = 61.18/180*np.pi
     det = data.shape[2]
@@ -96,7 +96,6 @@ if __name__ == "__main__":
     lamd2 = np.zeros([3, det, det, det], dtype='complex64')
     
     flow = np.zeros([ntheta, det, det, 2], dtype='float32')
-    psi = data.copy()
 
     # number of ADMM iterations
     niter = 257
@@ -115,7 +114,7 @@ if __name__ == "__main__":
                 # registration
                 tic()
                 flow = dslv.registration_flow_batch(
-                    psi, data, 0, 1, flow.copy(), pars, nproc=21)
+                    psi1, data, 0, 1, flow.copy(), pars, nproc=21)
                 t1 = toc()
                 tic()
                 # deformation subproblem
@@ -135,7 +134,7 @@ if __name__ == "__main__":
                 lamd2 = lamd2+rho2*(h2-psi2)
 
                 # checking intermediate results
-                flowplot(u, psi, flow, 0)
+                flowplot(u, psi1, flow, 0)
                 if(np.mod(k, 16) == 0):  # check Lagrangian
                     Tpsi = dslv.apply_flow_batch(psi1, flow)
                     lagr = np.zeros(7)
@@ -150,9 +149,9 @@ if __name__ == "__main__":
                     print('times:', t1, t2, t3)
                     sys.stdout.flush()
                     dxchange.write_tiff_stack(
-                        u.real,  '/data/staff/tomograms/viknik/lamino/rec_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
+                        u.real,  '/local/data/viktor/lamino/rec_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
                     dxchange.write_tiff_stack(
-                        psi.real, '/data/staff/tomograms/viknik/lamino/prj_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
+                        psi1.real, '/local/data/viktor/lamino/prj_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
 
                 # Updates
                 rho1 = update_penalty(psi1, h1, h01, rho1)

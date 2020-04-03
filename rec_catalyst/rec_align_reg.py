@@ -77,7 +77,12 @@ if __name__ == "__main__":
         '/data/staff/tomograms/viknik/lamino/lamni-data-sorted-prealigned-cropped.tif').astype('complex64')[:, 8:-8, 8:-8]
     theta = np.load(
         '/data/staff/tomograms/viknik/lamino/angles.npy').astype('float32')/180*np.pi
-    #ids_bad = np.array([29,44,56,102,152])    
+    ids_bad = np.array([29,44,55,102,103,147,150,151])    
+    ids_good = np.delete(np.arange(data.shape[0]),ids_bad)
+    data = data[ids_good]
+    theta = theta[ids_good]
+    print(data.shape)
+
     phi = 61.18/180*np.pi
     det = data.shape[2]
     ntheta = data.shape[0]
@@ -96,7 +101,7 @@ if __name__ == "__main__":
     lamd2 = np.zeros([3, det, det, det], dtype='complex64')
     
     flow = np.zeros([ntheta, det, det, 2], dtype='float32')
-    psi = data.copy()
+   
 
     # number of ADMM iterations
     niter = 257
@@ -115,12 +120,12 @@ if __name__ == "__main__":
                 # registration
                 tic()
                 flow = dslv.registration_flow_batch(
-                    psi, data, 0, 1, flow.copy(), pars, nproc=21)
+                    psi1, data, 0, 1, flow.copy(), pars, nproc=16)
                 t1 = toc()
                 tic()
                 # deformation subproblem
                 psi1 = dslv.cg_deform(data, psi1, flow, 4,
-                                     tslv.fwd_lam(cp.array(u), cp.array(theta)).get()+lamd1/rho1, rho1, nproc=21)
+                                     tslv.fwd_lam(cp.array(u), cp.array(theta)).get()+lamd1/rho1, rho1, nproc=16)
                 t2 = toc()
                 psi2 = tslv.solve_reg(u,lamd2,rho2,alpha)   
                 # tomo subproblem

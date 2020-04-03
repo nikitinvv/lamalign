@@ -140,7 +140,7 @@ if __name__ == "__main__":
                 lamd2 = lamd2+rho2*(h2-psi2)
 
                 # checking intermediate results
-                flowplot(u, psi, flow, 0)
+                flowplot(u, psi1, flow, 0)
                 if(np.mod(k, 16) == 0):  # check Lagrangian
                     Tpsi = dslv.apply_flow_batch(psi1, flow)
                     lagr = np.zeros(7)
@@ -157,7 +157,7 @@ if __name__ == "__main__":
                     dxchange.write_tiff_stack(
                         u.real,  '/data/staff/tomograms/viknik/lamino/rec_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
                     dxchange.write_tiff_stack(
-                        psi.real, '/data/staff/tomograms/viknik/lamino/prj_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
+                        psi1.real, '/data/staff/tomograms/viknik/lamino/prj_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
 
                 # Updates
                 rho1 = update_penalty(psi1, h1, h01, rho1)

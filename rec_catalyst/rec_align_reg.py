@@ -49,10 +49,10 @@ def flowplot(u, psi, flow, binning):
 
     plt.subplot(3, 4, 12)
     plt.imshow(u[:, :, n//2].real, cmap='gray')
-    if not os.path.exists('/data/staff/tomograms/viknik/lamino//flow/'+str(binning)+'_'+str(ntheta)+'/'):
-        os.makedirs('/data/staff/tomograms/viknik/lamino//flow/' +
+    if not os.path.exists('/local/data/viktor/lamino//flow/'+str(binning)+'_'+str(ntheta)+'/'):
+        os.makedirs('/local/data/viktor//lamino//flow/' +
                     str(binning)+'_'+str(ntheta)+'/')
-    plt.savefig('/data/staff/tomograms/viknik/lamino//flow/' +
+    plt.savefig('/local/data/viktor/lamino//flow/' +
                 str(binning)+'_'+str(ntheta)+'/flow'+str(k))
     plt.close()
 
@@ -74,8 +74,9 @@ if __name__ == "__main__":
 
     # read data and angles
     data = dxchange.read_tiff(
-        '/data/staff/tomograms/viknik/lamino/lamni-data-sorted-prealigned-cropped.tif').astype('complex64')[:, 8:-8, 8:-8]
+        '/local/data/viktor/lamino/lamni-data-sorted-prealigned-cropped.tif').astype('complex64')
     theta = np.load(
+<<<<<<< HEAD
         '/data/staff/tomograms/viknik/lamino/angles.npy').astype('float32')/180*np.pi
     ids_bad = np.array([29,44,55,102,103,147,150,151])    
     ids_good = np.delete(np.arange(data.shape[0]),ids_bad)
@@ -83,6 +84,10 @@ if __name__ == "__main__":
     theta = theta[ids_good]
     print(data.shape)
 
+=======
+        '/local/data/viktor/lamino/angles.npy').astype('float32')/180*np.pi
+    #ids_bad = np.array([29,44,56,102,152])    
+>>>>>>> abc47bf3558659a7ece6da549eac6510aabd0606
     phi = 61.18/180*np.pi
     det = data.shape[2]
     ntheta = data.shape[0]
@@ -120,7 +125,11 @@ if __name__ == "__main__":
                 # registration
                 tic()
                 flow = dslv.registration_flow_batch(
+<<<<<<< HEAD
                     psi1, data, 0, 1, flow.copy(), pars, nproc=16)
+=======
+                    psi1, data, 0, 1, flow.copy(), pars, nproc=21)
+>>>>>>> abc47bf3558659a7ece6da549eac6510aabd0606
                 t1 = toc()
                 tic()
                 # deformation subproblem
@@ -155,7 +164,7 @@ if __name__ == "__main__":
                     print('times:', t1, t2, t3)
                     sys.stdout.flush()
                     dxchange.write_tiff_stack(
-                        u.real,  '/data/staff/tomograms/viknik/lamino/rec_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
+                        u.real,  '/local/data/viktor/lamino/rec_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
                     dxchange.write_tiff_stack(
                         psi1.real, '/data/staff/tomograms/viknik/lamino/prj_align/tmp'+str(0)+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
 

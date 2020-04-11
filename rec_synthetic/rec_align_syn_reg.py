@@ -50,9 +50,9 @@ def flowplot(u, psi, flow):
 
     plt.subplot(3, 4, 12)
     plt.imshow(u[:, :, n//2].real, cmap='gray')
-    if not os.path.exists('flow/'+'_'+str(ntheta)+'/'):
-        os.makedirs('flow/'+'_'+str(ntheta)+'/')
-    plt.savefig('flow/'+'_'+str(ntheta)+'/flow'+str(k))
+    if not os.path.exists('flow' +'_'+str(ntheta)+'/'):
+        os.makedirs('flow'+'_'+str(ntheta)+'/')
+    plt.savefig('flow' + '_'+str(ntheta)+'/flow'+str(k))
     plt.close()
 
 
@@ -68,20 +68,27 @@ def update_penalty(psi, h, h0, rho):
 
 
 if __name__ == "__main__":
+
     f = -dxchange.read_tiff('delta-chip-256.tiff')[::2, ::2, ::2]
     ntheta = 128
     det = f.shape[0]
     theta = np.arange(0, ntheta).astype('float32')/ntheta*2*np.pi
     phi = 61.18/180*np.pi
-    
+
     # initial guess
     u = np.zeros([det, det, det], dtype='float32')
-    lamd = np.zeros([ntheta, det, det], dtype='float32')
+    psi2 = np.zeros([3, det, det, det], dtype='float32')
+    lamd1 = np.zeros([ntheta, det, det], dtype='float32')
+    lamd2 = np.zeros([3, det, det, det], dtype='float32')
     flow = np.zeros([ntheta, det, det, 2], dtype='float32')
-   
+
     # optical flow parameters
     pars = [0.5, 0, 128, 4, 5, 1.1, 4]
     niter = 65
+
+    # regularization parameter
+    alpha = 5e-8
+
     with lcg.SolverLam(det, det, det, det, ntheta, phi) as tslv:
         data = tslv.fwd_lam(f, theta)
         with dc.SolverDeform(ntheta, det, det) as dslv:
@@ -96,46 +103,62 @@ if __name__ == "__main__":
             data = (data-mmin)/(mmax-mmin)
             dxchange.write_tiff(data, 'data', overwrite=True)
 
-            psi = data.copy()
-            rho = 0.5
-            h0 = psi
+            psi1 = data.copy()
+            rho1 = 0.5
+            rho2 = 0.5
+            h01 = psi1
+            h02 = psi2
+
             for k in range(niter):
                 # registration
                 tic()
                 flow = dslv.registration_flow_batch(
-                    psi, data, 0, 1, flow.copy(), pars, nproc=16)
+                    psi1, data, 0, 1, flow.copy(), pars, nproc=16)
                 t1 = toc()
                 tic()
                 # deformation subproblem
-                psi = dslv.cg_deform(data, psi, flow, 4,
-                                     tslv.fwd_lam(u, theta)+lamd/rho, rho, nproc=16)
+                psi1 = dslv.cg_deform(data, psi1, flow, 4,
+                                      tslv.fwd_lam(u, theta)+lamd1/rho1, rho1, nproc=16)
                 t2 = toc()
+
+                psi2 = tslv.solve_reg(u, lamd2, rho2, alpha)
                 # tomo subproblem
                 tic()
-                u = tslv.cg_lam(psi-lamd/rho, u, theta, 4)
+                u = tslv.cg_lam_ext(psi1-lamd1/rho1,
+                                    u, theta, 4, rho2/rho1, psi2-lamd2/rho2, False)
                 t3 = toc()
-                h = tslv.fwd_lam(u, theta)
+
+                h1 = tslv.fwd_lam(u, theta)
+                h2 = tslv.fwd_reg(u)
                 # lambda update
-                lamd = lamd+rho*(h-psi)
+                lamd1 = lamd1+rho1*(h1-psi1)
+                lamd2 = lamd2+rho2*(h2-psi2)
 
                 # checking intermediate results
-                flowplot(u, psi, flow)
+                flowplot(u, psi1, flow)           
                 if(np.mod(k, 8) == 0):  # check Lagrangian
-                    Tpsi = dslv.apply_flow_batch(psi, flow)
-                    lagr = np.zeros(4)
+                    Tpsi = dslv.apply_flow_batch(psi1, flow)
+                    lagr = np.zeros(7)
                     lagr[0] = np.linalg.norm(Tpsi-data)**2
-                    lagr[1] = np.sum(np.real(np.conj(lamd)*(h-psi)))
-                    lagr[2] = rho*np.linalg.norm(h-psi)**2
-                    lagr[3] = np.sum(lagr[0:3])
-                    print(k, pars[2], np.linalg.norm(flow), rho, lagr)
+                    lagr[1] = np.sum(np.real(np.conj(lamd1)*(h1-psi1)))
+                    lagr[2] = rho1*np.linalg.norm(h1-psi1)**2
+                    lagr[3] = alpha * \
+                        np.sum(np.sqrt(np.real(np.sum(psi2*np.conj(psi2), 0))))
+                    lagr[4] = np.sum(np.real(np.conj(lamd2*(h2-psi2))))
+                    lagr[5] = rho2*np.linalg.norm(h2-psi2)**2
+                    lagr[6] = np.sum(lagr[0:5])
+                    print(k, rho1, rho2, lagr)
                     print('times:', t1, t2, t3)
+                    sys.stdout.flush()
                     dxchange.write_tiff_stack(
-                        u.real,  'rec'+'_'+str(ntheta)+'/rect'+str(k)+'/r', overwrite=True)
+                        u,  'rec'+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
                     dxchange.write_tiff_stack(
-                        psi.real, 'rec'+'_'+str(ntheta)+'/psir'+str(k)+'/r',  overwrite=True)
+                        psi1, 'rec'+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
 
                 # Updates
-                rho = update_penalty(psi, h, h0, rho)
-                h0 = h
+                rho1 = update_penalty(psi1, h1, h01, rho1)
+                rho2 = update_penalty(psi2, h2, h02, rho2)
+                h01 = h1
+                h02 = h2
                 if(pars[2] > 8):
                     pars[2] -= 1

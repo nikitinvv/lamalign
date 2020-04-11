@@ -1,14 +1,15 @@
-#!/bin/bash
-#SBATCH -t 8:00:00
-#SBATCH -J laminography
-#SBATCH -p v100
-##SBATCH --exclude gn1
-#SBATCH -c 42
-#SBATCH --mem 160G
+# CUDA_VISIBLE_DEVICES=4 python rec_align_reg_matlab.py 1e-8 1e-2 129 &
+# CUDA_VISIBLE_DEVICES=5 python rec_align_reg_matlab.py 1e-10 1e-2 129 &
+# CUDA_VISIBLE_DEVICES=6 python rec_align_reg_matlab.py 1e-14 1e-2 129 &
+# CUDA_VISIBLE_DEVICES=7 python rec_align_matlab.py 1e-2 129 &
+# CUDA_VISIBLE_DEVICES=3 python rec_align_reg_matlab.py 1e-07 1e-2 129 &
 
-module add GCC/8.3.0  GCCcore/8.3.0  CUDA/10.1.243
 
-CUDA_VISIBLE_DEVICES=0 python rec_align_matlab.py 
-#CUDA_VISIBLE_DEVICES=1 python rec_align_reg.py 4e-9 &
-#wait
+# wait
+
+
+for k in {16..129..16};do cp rec_align/tmp_168_1e-08/rect$k/r_00072.tiff results/"$k"_1e-08.tiff;done
+for k in {16..129..16};do cp rec_align/tmp_168_1.00001e-08/rect$k/r_00072.tiff results/"$k"_1.00001e-08.tiff;done
+for k in {16..129..16};do cp rec_align/tmp_168/rect$k/r_00072.tiff results/"$k".tiff;done
+
 

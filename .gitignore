@@ -130,3 +130,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+flow*
+data/
+prj_align/
+rec_align/
+results/
+rec_128*
+.loglogin

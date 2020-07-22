@@ -48,9 +48,9 @@ def flowplot(u, psi, flow, binning):
 
     plt.subplot(3, 4, 12)
     plt.imshow(u[:, :, n//2], cmap='gray')
-    if not os.path.exists('flow'+'_'+str(ntheta)+'/'):
-        os.makedirs('flow' + '_'+str(ntheta)+'/')
-    plt.savefig('flow' + '_'+str(ntheta)+'/flow'+str(k))
+    if not os.path.exists('nflow'+'_'+str(ntheta)+'/'):
+        os.makedirs('nflow' + '_'+str(ntheta)+'/')
+    plt.savefig('nflow' + '_'+str(ntheta)+'/flow'+str(k))
     plt.close()
 
 
@@ -64,6 +64,23 @@ def update_penalty(psi, h, h0, rho):
         rho *= 0.5
     return rho
 
+def find_min_max(data):
+    # s = np.std(data,axis=(1,2))    
+    # m = np.mean(data,axis=(1,2))
+    # mmin = m-2*s
+    # mmax = m+2*s
+    mmin = np.zeros(data.shape[0],dtype='float32')
+    mmax = np.zeros(data.shape[0],dtype='float32')
+    
+    for k in range(data.shape[0]):
+        h, e = np.histogram(data[k][:],1000)
+        stend = np.where(h>np.max(h)*0.005)
+        st = stend[0][0]
+        end = stend[0][-1]        
+        mmin[k] = e[st]
+        mmax[k] = e[end+1]
+     
+    return mmin,mmax
 
 if __name__ == "__main__":
     # cupy uses managed memory
@@ -79,11 +96,7 @@ if __name__ == "__main__":
     ntheta = data.shape[0]
 
     # normalize data for optical flow computations
-    mmin = -0.9  # min data value
-    mmax = 1.2  # max data value
-    data[data < mmin] = mmin
-    data[data > mmax] = mmax
-    data = (data-mmin)/(mmax-mmin)
+    mmin,mmax=find_min_max(data)
 
     # initial guess
     u = np.zeros([det, det, det], dtype='float32')
@@ -92,17 +105,21 @@ if __name__ == "__main__":
     psi = data.copy()
 
     # optical flow parameters
-    pars = [0.5, 0, 256, 4, 5, 1.1, 4]
-    niter = 17
+    pars = [0.5, 1, 1024, 4, 5, 1.1, 4]
+    niter = 257
     with lcg.SolverLam(det, det, det, det, ntheta, phi,float(sys.argv[1])) as tslv:
-        with dc.SolverDeform(ntheta, det, det) as dslv:
+        ucg = tslv.cg_lam(psi,u, theta, 144, False)
+        dxchange.write_tiff(
+                        ucg,  'rec_align/cg'+'_'+str(ntheta), overwrite=True)
+        exit()
+        with dc.SolverDeform(ntheta, det, det, 42) as dslv:
             rho = 0.5
             h0 = psi
             for k in range(niter):
                 # registration
                 tic()
                 flow = dslv.registration_flow_batch(
-                    psi, data, 0, 1, flow.copy(), pars, nproc=42)
+                    psi, data, mmin, mmax, flow.copy(), pars, nproc=42)
                 t1 = toc()
                 tic()
                 # deformation subproblem
@@ -121,7 +138,7 @@ if __name__ == "__main__":
                 # checking intermediate results
                 flowplot(u, psi, flow, 0)
                 if(np.mod(k, 16) == 0):  # check Lagrangian
-                    Tpsi = dslv.apply_flow_batch(psi, flow)
+                    Tpsi = dslv.apply_flow_gpu_batch(psi, flow)
                     lagr = np.zeros(4)
                     lagr[0] = np.linalg.norm(Tpsi-data)**2
                     lagr[1] = np.sum(np.real(np.conj(lamd)*(h-psi)))
@@ -130,12 +147,14 @@ if __name__ == "__main__":
                     print(k,  rho, pars[2], np.linalg.norm(flow), rho, lagr)
                     print('times:', t1, t2, t3)
                     dxchange.write_tiff_stack(
-                        u,  'rec_align/tmp'+'_'+str(ntheta)+'/rect'+str(k)+'/r', overwrite=True)
+                        u,  'rec_align/ntmp'+'_'+str(ntheta)+'/rect'+str(k)+'/r', overwrite=True)
                     dxchange.write_tiff_stack(
-                        psi, 'prj_align/tmp'+'_'+str(ntheta)+'/psir'+str(k)+'/r',  overwrite=True)
-
+                        psi, 'prj_align/ntmp'+'_'+str(ntheta)+'/psir'+str(k)+'/r',  overwrite=True)
+                    if not os.path.exists('nflow'+str(0)):
+                        os.makedirs('nflow'+str(0))
+                    np.save('nflow'+str(0)+'/'+str(k),flow)
                 # Updates
                 rho = update_penalty(psi, h, h0, rho)
                 h0 = h
-                if(pars[2] > 8):
-                    pars[2] -= 1
+              #  if(pars[2] > 8):
+                   # pars[2] -= 1

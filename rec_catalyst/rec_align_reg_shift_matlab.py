@@ -51,9 +51,9 @@ def flowplot(u, psi, flow, binning):
 
     plt.subplot(3, 4, 12)
     plt.imshow(u[:, :, n//2], cmap='gray')
-    if not os.path.exists('/local/data/vnikitin/lamino/flowr_'+str(ntheta)+'/'):
-        os.makedirs('/local/data/vnikitin/lamino/flowr_'+str(ntheta)+'/')
-    plt.savefig('/local/data/vnikitin/lamino/flowr_'+str(ntheta)+'/flow'+str(k))
+    if not os.path.exists('/local/data/vnikitin/lamino/flowshiftr_'+str(ntheta)+'/'):
+        os.makedirs('/local/data/vnikitin/lamino/flowshiftr_'+str(ntheta)+'/')
+    plt.savefig('/local/data/vnikitin/lamino/flowshiftr_'+str(ntheta)+'/flow'+str(k))
     plt.close()
 
 
@@ -95,7 +95,6 @@ if __name__ == "__main__":
     idset = np.int(sys.argv[1])
     data = data[idset::2]
     theta = theta[idset::2]
-    
     #ids_bad = np.array([29,44,56,102,152])
     phi = 61.18/180*np.pi
     det = data.shape[2]
@@ -114,7 +113,7 @@ if __name__ == "__main__":
     flow = np.zeros([ntheta, det, det, 2], dtype='float32')
 
     # optical flow parameters
-    pars = [0.5, 1, 256, 4, 5, 1.1, 4]
+    pars = [0.5, 1, 1024, 4, 5, 1.1, 4]
     niter = 257
     alpha = 8e-14
 
@@ -171,17 +170,17 @@ if __name__ == "__main__":
                     print('times:', t1, t2, t3)
                     sys.stdout.flush()
                     dxchange.write_tiff_stack(
-                        u,  '/local/data/vnikitin/lamino/rec_align'+str(idset)+'/tmp'+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
+                        u,  '/local/data/vnikitin/lamino/rec_align_shift'+str(idset)+'/tmp'+'_'+str(ntheta)+'_'+str(alpha)+'/rect'+str(k)+'/r', overwrite=True)
                     dxchange.write_tiff_stack(
-                        psi1, '/local/data/vnikitin/lamino/prj_align'+str(idset)+'/tmp'+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
-                    if not os.path.exists('/local/data/vnikitin/lamino/flow'+str(alpha)):
-                        os.makedirs('/local/data/vnikitin/lamino/flow'+str(alpha))
-                    np.save('/local/data/vnikitin/lamino/flow'+str(alpha)+'/'+str(k),flow)
+                        psi1, '/local/data/vnikitin/lamino/prj_align_shift'+str(idset)+'/tmp'+'_'+str(ntheta)+'_'+str(alpha)+'/psir'+str(k)+'/r',  overwrite=True)
+                    if not os.path.exists('/local/data/vnikitin/lamino/flowshift'+str(alpha)):
+                        os.makedirs('/local/data/vnikitin/lamino/flowshift'+str(alpha))
+                    np.save('/local/data/vnikitin/lamino/flowshift'+str(alpha)+'/'+str(k),flow)
 
                 # Updates
                 rho1 = update_penalty(psi1, h1, h01, rho1)
                 rho2 = update_penalty(psi2, h2, h02, rho2)
                 h01 = h1
                 h02 = h2
-                if(pars[2] > 8):
-                    pars[2] -= 1
+                # if(pars[2] > 8):
+                    # pars[2] -= 1
